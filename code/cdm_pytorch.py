@@ -255,8 +255,8 @@ def fit(epochs, model, opt, train_dl, val_dl):
         val_acc = [acc_batch(model, xb, yb, xlb) for xb, xlb, yb in val_dl]
         val_acc = sum(val_acc) / len(val_acc)
 
-        # print(f'Epoch: {epoch}, Training Loss: {loss}, Val Loss: {val_loss}, \
-                # Val Accuracy {val_acc}')
+        print(f'Epoch: {epoch}, Training Loss: {loss}, Val Loss: {val_loss}, \
+                Val Accuracy {val_acc}')
 
     loss.backward() # for last gradient value
     with t.no_grad():
@@ -300,3 +300,42 @@ def default_run(dataset=None, dd=None, dm=None, ism=True, batch_size=None,
     print(f'Runtime: {time.time() - s}')
 
     return val_loss, tr_loss, gv, train_ds, val_ds, model, opt
+
+def train_model(epochs, model, opt, train_data, validation_data, test_data, batchsize=32):
+    train_dl = DataLoader(train_data, batch_size=batchsize, shuffle=True)
+    val_dl = dict()
+    test_dl = dict()
+    for size, val_data in validation_data.items():
+        val_dl[size] = DataLoader(val_data, batch_size=None)
+    for size, test_data in test_data.items():
+        test_dl[size] = DataLoader(test_data, batch_size=None)
+    training_loss = []
+    validation_loss = dict()
+    test_loss = dict()
+    for size in [2, 4, 8, 12, 16]:
+        validation_loss[size] = []
+        test_loss[size] = []
+    for epoch in range(epochs):
+        total_loss = 0
+        model.train()
+        i = 0
+        for xb, xlb, yb in train_dl:
+            loss = model.loss_func(model(xb, xlb), yb, xlb)
+            loss.backward()
+            opt.step()
+            opt.zero_grad()
+            total_loss += loss.item()
+            i += 1
+        total_loss /= i
+        training_loss.append(total_loss)
+        # print(f'Epoch: {epoch}, Training Loss: {total_loss}, Validation Loss:')
+        model.eval()
+        for size, val_data in val_dl.items():
+            val_loss = [model.loss_func(model(xb, xlb), yb, xlb) for xb, xlb, yb in val_data]
+            val_loss = sum(val_loss)/len(val_loss)
+            validation_loss[size].append(val_loss.item())
+        for size, test_data in test_dl.items():
+            tst_loss = [model.loss_func(model(xb, xlb), yb, xlb) for xb, xlb, yb in test_data]
+            tst_loss = sum(tst_loss)/len(tst_loss)
+            test_loss[size].append(tst_loss.item())
+    return training_loss, validation_loss, test_loss
