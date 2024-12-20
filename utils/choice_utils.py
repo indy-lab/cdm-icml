@@ -267,8 +267,8 @@ def read_data(filename, pre_proc=True):
 				output[key] = choice_str_to_int(output[key])
 			elif re.match(r'd._text', key):
 				output[key] = handle_days(output[key])
-			elif key == '':
-				output['index'] = output.pop(key)
+		if '' in output.keys():
+				output['index'] = output.pop('')
 
 
 	return output
